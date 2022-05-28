@@ -1,0 +1,9 @@
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\bin\Debug\Messenger v2.exe
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\bin\Debug\Messenger v2.pdb
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger v2.csproj.AssemblyReference.cache
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger_v2.Form1.resources
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger_v2.Properties.Resources.resources
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger v2.csproj.GenerateResource.cache
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger v2.csproj.CoreCompileInputs.cache
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger v2.exe
+G:\My Drive\C# Projects\Messenger-Apps\Codes\C#\Messenger v2\obj\Debug\Messenger v2.pdb
