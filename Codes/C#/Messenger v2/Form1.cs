@@ -15,20 +15,33 @@ namespace Messenger_v2
 {
     public partial class Form1 : Form
     {
-
-        //WORKS BUT LOST INTEREST AND DIDN'T POLISH
-
-
-        TcpListener server = new TcpListener(IPAddress.Parse(GetLocalIPAddress()), 23);
-        TcpClient client;
-        bool connect_state = true;
+        bool clientState = true;
+        bool serverState = true;
+        public static TcpListener server;
+        public static TcpClient clientSocket = new TcpClient();
+        private static List<string> uniqueID = new List<string>();
+        string[] buttonTexts = { "Connect", "Disconnect", "Start", "Stop" };
+        
 
         public Form1()
         {
             InitializeComponent();
         }
 
-        public static string GetLocalIPAddress()
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            //FOR FASTER TESTING
+            IP_TextBox.Text = GetLocalIP();
+            Port_TextBox.Text = "23";
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            server.Stop();
+            clientSocket.Close();
+        }
+
+        private static string GetLocalIP()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
@@ -37,99 +50,228 @@ namespace Messenger_v2
             throw new Exception("No network adapters with an IPv4 address in the system!");
         }
 
-        public static string GetPublicIP()
+        private static string GetPublicIP()
         {
             return new WebClient().DownloadString("http://icanhazip.com").Trim();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void Connect_Button_Click(object sender, EventArgs e)
         {
-            //Starting Server
-            server.Start();
-            //server.Delimiter = 0x13;//enter
-            //server.StringEncoder = Encoding.UTF8;
-            //server.DataReceived += Server_DataReceived;
+            clientState = !clientState;
 
-            //FOR FASTER TESTING
-            IP_TextBox.Text = GetLocalIPAddress();
-            Port_TextBox.Text = "23";
-
-            //Starting Client
-            client = new TcpClient();
-            //client.StringEncoder = Encoding.UTF8;
-        }
-        /*
-
-        private void Server_DataReceived(object sender, SimpleTCP.Message e)
-        {
-            //NEED FORMATING
-
-            //Update mesage to txtStatus
-            Main_TextBox.Invoke((MethodInvoker)delegate ()
+            if (clientState == true)
             {
-                Main_TextBox.Text += "Received: " + e.MessageString;
-                Main_TextBox.Text = Main_TextBox.Text.Remove(Main_TextBox.Text.Length - 1);
-                Main_TextBox.Text += "\n";
+                try 
+                {
+                    clientSocket.Close();
+                    Connect_Button.Text = buttonTexts[0];       // Connect               
+                }
+                catch (Exception ex) { clientState = Error_Message(clientState, Connect_Button, buttonTexts[1], ex); } // Disconnect
 
-                e.ReplyLine(string.Format("", e.MessageString));
-                Main_TextBox.ForeColor = Color.Black;
-            });
+            }
+            else if (clientState == false)
+            {
+                try 
+                {
+                    Connect_Button.Text = buttonTexts[1]; // Disconnect
+                    clientSocket.Connect(IP_TextBox.Text, Convert.ToInt32(Port_TextBox.Text)); 
+                }
+                catch (Exception ex) { clientState = Error_Message(clientState, Connect_Button, buttonTexts[0], ex); } // Connect
+            }
+        }        
+
+        private void Server_Button_Click(object sender, EventArgs e)
+        {
+            serverState = !serverState;
+
+            if (serverState == true)
+            {
+                try
+                {
+                    Server_Button.Text = buttonTexts[2]; // Start
+                    server.Stop();
+                }
+                catch (Exception ex) { serverState = Error_Message(serverState, Server_Button, buttonTexts[3], ex); } // Stop
+
+            }
+            else if (serverState == false)
+            {
+                try
+                {
+                    Server_Button.Text = buttonTexts[3]; // Stop
+                    server = new TcpListener(IPAddress.Parse(GetLocalIP()), Convert.ToInt32(Port_TextBox.Text));
+                    server.Start();
+                }
+                catch (Exception ex) { serverState = Error_Message(serverState, Server_Button, buttonTexts[2], ex); } // Start
+            }
+        }
+
+        private bool Error_Message(bool state, Button button, string message, Exception e)
+        {
+            button.Text = message;
+            state = !state;
+            MessageBox.Show(e.Message, "Error Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            return state;
         }
 
         private void Send_Button_Click(object sender, EventArgs e)
         {
-            client.WriteLineAndGetReply(Sending_TextBox.Text, TimeSpan.FromSeconds(0)); //was 3
-
-            Main_TextBox.Text += "Sent: " + Sending_TextBox.Text + " " + "\n";
+            //
+            Main_TextBox.Text += "You Sent: " + Sending_TextBox.Text + " " + "\n";
             Sending_TextBox.Text = "";
         }
-*/
 
-        private void MessengerForm_FormClosing(object sender, FormClosingEventArgs e)
+        public static void Main(string[] args)
         {
-            server.Stop();
-            client.Close();
+            #region Creating Objects for Network Communication
+            //TcpClient clientSocket = new TcpClient();
+            //TcpListener server = new TcpListener(IPAddress.Parse(IP), port);
+            #endregion
+
+            //server.Start();                                                                                             //Starting server to listen for tcp client connection requests
+            //Console.WriteLine("Server Started, waiting for a connection... \n");
+
+            while (true)                                                                                                        //main loop
+            {
+                clientSocket = server.AcceptTcpClient();                                                                //waiting for a tcp client connection
+                //if (clientCounter < 0) clientCounter = 0;                                                                       //implemented to fix issue where counter would go below zero
+                //clientCounter++;
+                handleClient client = new handleClient();
+                string clientID = client.generateID();                                                                          //generating a random unique ID
+
+                //Console.WriteLine("Client number " + clientCounter + " has a client ID of " + clientID
+                //     + " Connected, on thread " + Thread.CurrentThread.ManagedThreadId + ".\n");
+
+                client.startInitializing(clientSocket, clientID);//, clientCounter);                                                      //Initalzing the client object
+            }
         }
 
-        private void Connect_Button_Click(object sender, EventArgs e)
+        public class handleClient
         {
-            connect_state = !connect_state;
+            #region Creating Global Class Variables & TcpClient Object
+            TcpClient client = new TcpClient();
+            string clientID = "0";
+            int clientNum;
+            #endregion
 
-            if (connect_state == true)
+            public void startInitializing(TcpClient inClientSocket, string inClientID)//, int inClientNum)
             {
-                Connect_Button.Text = "Connect";
+                #region Inputting passed variables & TcpClient object to global ones
+                client = inClientSocket;
+                clientID = inClientID;
+                //clientNum = inClientNum;
+                #endregion
 
+                #region Multi Threading Code
+                //clientThread();                                                                                               //Used for testing before implementing multi-threading
+                Thread ctThread = new Thread(clientThread);                                                                     //Creating a new thread which will handle the particular client's I/O to the server
+                ctThread.Start();                                                                                               //Starting the thread
+                #endregion
+            }
+
+            private void clientThread()
+            {
                 try
                 {
-                    client.Close();
-                    //server.Stop();
+                    #region Sending the ID to the Client
+                    NetworkStream dataStream = client.GetStream();
+                    sendData(dataStream, clientID);
+                    Console.WriteLine("ID sent, waiting for message... \n");
+                    #endregion
+
+                    #region Main Loop: Receiving Data over the Network, Checking the ID & Responding Accordingly
+                    while (client.Connected)
+                    {
+                        String responseData = receiveData(dataStream);                                                          //Receiving the message from the client
+
+                        #region Splitting Message to check ID
+                        var firstSplit = responseData.Split('[');
+                        var finalSplit = firstSplit[1].Split(']');
+                        #endregion
+
+                        #region Checking ID & responding back to client accordingly
+                        if (uniqueID.Contains(finalSplit[0]) == true)
+                        {
+                            string recMsg = "Message: " + finalSplit[1] + " received from ID " +
+                            finalSplit[0] + " on thread " + Thread.CurrentThread.ManagedThreadId + ".\n";
+
+                            Console.WriteLine(recMsg);
+                            sendData(dataStream, "ID Valid, Message Received.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("ID was invalid connection closed.\n");
+                            sendData(dataStream, "ID was invalid closing connection.");
+                            Thread.Sleep(1000);
+                            closeClient();
+                        }
+                        #endregion
+                    }
+                    #endregion
                 }
-                catch (Exception ex)
+                catch (Exception e)                                                                                             //Warning that something went wrong and connection is closing
                 {
-                    Connect_Button.Text = "Disconnect";
-                    connect_state = !connect_state;
-                    MessageBox.Show(ex.Message, "Error Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //Console.WriteLine("\nClosing Connection to Client " + clientNum + " due to error: " + e.ToString() + "\n");
+                    Console.WriteLine("\nClosing Connection to Client" + " due to error: " + e.ToString() + "\n");
+                    closeClient();
                 }
             }
-            else if (connect_state == false)
+
+            //Generating a random unqiue ID, adding it to the global list of ID's and then returning it as a string
+            public string generateID()
             {
-                Connect_Button.Text = "Disconnect";
+                #region Creating Method variable & object
+                Random rndGen = new Random();
+                bool unique = false;
+                #endregion
 
-                try
+                #region Generating ID & Checking it is unique
+                do
                 {
-                    //Starting Server
-                    //IPAddress ip = IPAddress.Parse(GetLocalIPAddress());                    
-                    //server.Start(ip, Convert.ToInt32(Port_TextBox.Text));
+                    int id = rndGen.Next(1, 10000);
 
-                    //Connect to server
-                    client.Connect(IP_TextBox.Text, Convert.ToInt32(Port_TextBox.Text));
-                }
-                catch (Exception ex)
-                {
-                    Connect_Button.Text = "Connect";
-                    connect_state = !connect_state;
-                    MessageBox.Show(ex.Message, "Error Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                    if (uniqueID.Contains(id.ToString("D4")) == false)
+                    {
+                        uniqueID.Add(id.ToString("D4"));
+                        unique = true;
+                    }
+
+                } while (unique == false);
+                #endregion
+
+                unique = false;                                                                                                 //Reseting variable
+
+                return uniqueID[uniqueID.Count - 1];
+            }
+
+            //Closing the Connection, decrementing the counter of clients and removing the uniqueID from the global list
+            private void closeClient()
+            {
+                Console.WriteLine("Client " + clientNum + " with ID " + clientID
+                + " Disconnected, on thread " + Thread.CurrentThread.ManagedThreadId + ".\n");
+
+                //clientCounter--;
+                uniqueID.Remove(clientID);
+                client.Close();
+
+                if (uniqueID.Count == 0) Console.WriteLine("Waiting for a connection... \n");                                   //To show that there is no active connection
+            }
+
+            //Returning sent string from over the network
+            private string receiveData(NetworkStream clientStream)
+            {
+                Byte[] recvData = new Byte[256];
+                Int32 bytesInt = clientStream.Read(recvData, 0, recvData.Length);
+                return Encoding.ASCII.GetString(recvData, 0, bytesInt);
+            }
+
+            //Sending a string over the network
+            private void sendData(NetworkStream clientStream, string sendString)
+            {
+                Byte[] sendData = new Byte[256];
+                sendData = Encoding.ASCII.GetBytes(sendString);
+                clientStream.Write(sendData, 0, sendData.Length);
             }
         }
     }
