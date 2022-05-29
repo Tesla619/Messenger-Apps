@@ -15,6 +15,7 @@ namespace Messenger_v2
 {
     public partial class Form1 : Form
     {
+        string recMsg;
         bool clientState = true;
         bool serverState = true;
         NetworkStream clientStream;
@@ -22,6 +23,7 @@ namespace Messenger_v2
         static TcpClient client = new TcpClient();
         string[] buttonTexts = { "Connect", "Disconnect", "Start", "Stop" };
 
+        //https://www.c-sharpcorner.com/UploadFile/97ec13/how-to-make-a-chat-application-in-C-Sharp/
 
         public Form1()
         {
@@ -121,7 +123,7 @@ namespace Messenger_v2
             //
             clientStream = client.GetStream();
             sendData(clientStream, Sending_TextBox.Text);            
-            Main_TextBox.Text += ID_Label.Text + "(You) Sent: " + Sending_TextBox.Text + " " + "\n";
+            Main_TextBox.Text += ID_TextBox.Text + "(You) Sent: " + Sending_TextBox.Text + " " + "\n";
             Sending_TextBox.Text = "";
         }
 
@@ -131,7 +133,7 @@ namespace Messenger_v2
             {
                 #region Sending the ID to the Client
                 NetworkStream dataStream = client.GetStream();
-                sendData(dataStream, ID_Label.Text);
+                sendData(dataStream, ID_TextBox.Text);
                 Console.WriteLine("ID sent, waiting for message... \n");
                 #endregion
 
@@ -146,7 +148,7 @@ namespace Messenger_v2
                     #endregion
 
                     string recMsg = "Message: " + responseData + " received from ID " +
-                        ID_Label.Text + ".\n";
+                        ID_TextBox.Text + ".\n";
 
                     Console.WriteLine(recMsg);
                     sendData(dataStream, "ID Valid, Message Received.");
@@ -181,11 +183,11 @@ namespace Messenger_v2
         //Closing the Connection, decrementing the counter of clients and removing the uniqueID from the global list
         private void closeClient()
         {
-            Console.WriteLine("Client " + " with ID " + ID_Label.Text
+            Console.WriteLine("Client " + " with ID " + ID_TextBox.Text
             + " Disconnected, on thread " + Thread.CurrentThread.ManagedThreadId + ".\n");
 
             //clientCounter--;
-            //uniqueID.Remove(ID_Label.Text);
+            //uniqueID.Remove(ID_TextBox.Text);
             client.Close();
 
             //if (uniqueID.Count == 0) Console.WriteLine("Waiting for a connection... \n");                                   //To show that there is no active connection
@@ -209,16 +211,40 @@ namespace Messenger_v2
 
         private void button1_Click(object sender, EventArgs e)
         {
+            //Thread thread = new Thread(new ThreadStart(recData));
+            //thread.Start();
+            //recData();
+        }
+
+        private void recData()
+        {
             
-            while(true) 
+        }
+
+        private void checkReceive_DoWork(object sender, DoWorkEventArgs e)
+        {
+            bool received = false;
+            
+            while (received == false)
             {
                 try
                 {
                     clientStream = client.GetStream();
-                    string msg = receiveData(clientStream);
+                    recMsg = receiveData(clientStream);
+
+                    if (recMsg != null)
+                    {
+                        Main_TextBox.Text += ID_TextBox.Text + "(You) Sent: " + Sending_TextBox.Text + " " + "\n";                        
+                        //Sending_TextBox.Text = "";
+                        received = true;
+                    }
+
+
+                    //return msg;
                 }
-                catch (Exception ex) { }
+                catch (Exception) { }
             }
+            //return null;
         }
     }
 }
